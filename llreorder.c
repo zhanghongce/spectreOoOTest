@@ -18,6 +18,7 @@ unsigned char table1[64];
 unsigned char table2[64];
 unsigned char table3[64];
 unsigned char table4[64];
+unsigned char table5[64];
 
 const int REPEATCNT = 100;
 
@@ -52,8 +53,12 @@ int main()
 	volatile unsigned long t0;
 	volatile unsigned long t1;
 	volatile unsigned long t2;
+	volatile unsigned long tb5_1;
+	volatile unsigned long tb5_2;
 	unsigned char det = rand()%256;
 	int u = rand() % 256;
+	int v;
+
 	
 	
 	for (idx = 0; idx < 64; idx ++ ) {
@@ -61,14 +66,16 @@ int main()
 		table2[idx] = rand()%256;
 		table3[idx] = rand()%256;
 		table4[idx] = rand()%256;
+		table5[idx] = rand()%256;
 		}
 		
 	probe(table2);
 	probe(table3);
 	probe(table4);
 	t0 = probe(table1);	 // clear table1 cache
+	tb5_1 = probe(table5); // 
 	
-	for(idx = 0; idx < 1000; idx ++)
+	for(idx = 0; idx < 100000; idx ++)
 	{
 		y = rand() % 256;
 		x = rand() % 256;
@@ -76,20 +83,27 @@ int main()
 		probe(table2);
 		probe(table3);
 		probe(table4); // make sure the following loads will miss
+		probe(table5); // tb5 
 		
 		x  = table4[x%64];
 		x  = table3[x%64];
 		x  = table2[x%64];
 		if(x < 100)
 		{
-			u = *((unsigned int *)table1);
-			*((unsigned int *)table1) = y;	 // 
+			u *= u;
+			u *= u;
+			u = *((unsigned int *)table1 + u%16);
+			v = *((unsigned int *)table5);
+			
 			
 		}
 		t2 = probe(table1);
+		tb5_2 = probe(table5); 
 		
-		if (t2 < 100 && x >= 100 ) {
-			printf("%ld,%ld,%ld %c\n", t0, t1, t2 , x>=100?'*':' ');
+		//if (t2 > 100 && x >= 100 ) {
+		if (tb5_2 < 100 && x >= 100 && t2 > 100 ) {
+			printf("%ld,%ld,%ld %c\n", t0, t1, t2,  x>=100?'*':' ');
+			printf("%ld,%ld\n", tb5_1, tb5_2);
 			}
 	}
 	
