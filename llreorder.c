@@ -55,6 +55,9 @@ int main()
 	volatile unsigned long t2;
 	volatile unsigned long tb5_1;
 	volatile unsigned long tb5_2;
+	int both_unfetch = 0;
+	int fetch_old = 0;
+	int OoO = 0;
 	unsigned char det = rand()%256;
 	int u = rand() % 256;
 	int v;
@@ -75,7 +78,7 @@ int main()
 	t0 = probe(table1);	 // clear table1 cache
 	tb5_1 = probe(table5); // 
 	
-	for(idx = 0; idx < 100000; idx ++)
+	for(idx = 0; idx < 1000000; idx ++)
 	{
 		y = rand() % 256;
 		x = rand() % 256;
@@ -101,15 +104,24 @@ int main()
 		tb5_2 = probe(table5); 
 		
 		//if (t2 > 100 && x >= 100 ) {
+		
 		if (tb5_2 < 100 && x >= 100 && t2 > 100 ) {
 			printf("%ld,%ld,%ld %c\n", t0, t1, t2,  x>=100?'*':' ');
 			printf("%ld,%ld\n", tb5_1, tb5_2);
+			OoO ++;
+			}
+		if (tb5_2 > 100 && x >= 100 && t2 < 100 ) {
+			fetch_old ++;
+			}
+		
+		if (tb5_2 > 100 && x >= 100 && t2 > 100 ) {
+			both_unfetch ++;
 			}
 	}
 	
 	
-   //printf("%ld,%ld,%ld\n", t0, t1, t2);
-   return u+table1[0];
+   printf("%d,%d,%d\n", OoO, fetch_old, both_unfetch);
+   return u+table1[0]+v;
 
 };
 
