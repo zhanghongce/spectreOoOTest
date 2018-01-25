@@ -19,6 +19,7 @@ unsigned char table2[64];
 unsigned char table3[64];
 unsigned char table4[64];
 unsigned char table5[64];
+unsigned char table6[64];
 
 const int REPEATCNT = 100;
 
@@ -70,6 +71,7 @@ int main()
 		table3[idx] = rand()%256;
 		table4[idx] = rand()%256;
 		table5[idx] = rand()%256;
+		table6[idx] = rand()%256;
 		}
 		
 	probe(table2);
@@ -96,7 +98,7 @@ int main()
 			u *= u;
 			u *= u;
 			u = *((unsigned int *)table1 + u%16);
-			v = *((unsigned int *)table5);
+			v = *((unsigned int *)table5 );
 			
 			
 		}
