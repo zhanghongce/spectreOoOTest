@@ -14,12 +14,12 @@ __inline__ uint64_t rdtsc()
     return a | ((uint64_t)d << 32);
 }
 
+unsigned char table6[64];
 unsigned char table1[64];
 unsigned char table2[64];
 unsigned char table3[64];
 unsigned char table4[64];
 unsigned char table5[64];
-unsigned char table6[64];
 
 const int REPEATCNT = 100;
 
@@ -56,6 +56,7 @@ int main()
 	volatile unsigned long t2;
 	volatile unsigned long tb5_1;
 	volatile unsigned long tb5_2;
+	volatile unsigned long tb6_acc;
 	int both_unfetch = 0;
 	int fetch_old = 0;
 	int OoO = 0;
@@ -80,7 +81,7 @@ int main()
 	t0 = probe(table1);	 // clear table1 cache
 	tb5_1 = probe(table5); // 
 	
-	for(idx = 0; idx < 1000000; idx ++)
+	for(idx = 0; idx < 100000; idx ++)
 	{
 		y = rand() % 256;
 		x = rand() % 256;
@@ -89,6 +90,7 @@ int main()
 		probe(table3);
 		probe(table4); // make sure the following loads will miss
 		probe(table5); // tb5 
+		probe(table6);
 		
 		x  = table4[x%64];
 		x  = table3[x%64];
@@ -98,12 +100,13 @@ int main()
 			u *= u;
 			u *= u;
 			u = *((unsigned int *)table1 + u%16);
-			v = *((unsigned int *)table5 );
+			//v = *((unsigned int *)table5 + u%16 );
 			
 			
 		}
 		t2 = probe(table1);
 		tb5_2 = probe(table5); 
+		tb6_acc = probe(table6);
 		
 		//if (t2 > 100 && x >= 100 ) {
 		
@@ -119,6 +122,9 @@ int main()
 		if (tb5_2 > 100 && x >= 100 && t2 > 100 ) {
 			both_unfetch ++;
 			}
+		if (tb6_acc < 100) {
+			printf("%ld, acc tb6!\n",tb6_acc);
+		}
 	}
 	
 	
