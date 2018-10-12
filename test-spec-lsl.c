@@ -1,7 +1,7 @@
 // Hongce Zhang @ Princeton
 // The way to rule out prefetcher effects is shown in test2.c
 // In this test, we will discuss 
-// whether load store---(dep)----load will be reordered
+// whether load---(d/a dep)---store---(reg-dep)----load will be reordered
 // Please compile it with -O0 
 // use g++ (Ubuntu 5.4.0-6ubuntu1~16.04.9) 5.4.0 20160609 please
 
@@ -89,6 +89,8 @@ int main()
 	volatile unsigned long table_is_used = 0;
 	volatile unsigned long table_is_not_used = 0;
     volatile unsigned long table0_not_accessed_while_later_reordered = 0;
+    volatile unsigned long table0_not_accessed_but_later_load_indeed = 0;
+    volatile unsigned long table0_not_accessed_while_later_reordered_incorrect = 0;
 	
     table0    = (unsigned char *) malloc(sizeof(unsigned char )*64);
 	table1    = (unsigned char *) malloc(sizeof(unsigned char )*64);
@@ -105,6 +107,10 @@ int main()
 		table5[idx] = rand()%256;
 		table6[idx] = rand()%256;
 		}
+	// make sure we make it to 0~4
+	for (idx = 0; idx < 16; idx ++ ) {
+		*(((unsigned int *)table0)+idx) = rand() % 4;
+	}
 		
 	probe(table2);
 	probe(table3);
@@ -118,6 +124,15 @@ int main()
 		x = rand() % 256;
 		v = rand() % 4;
         qi = rand() % 256;
+        
+        unsigned realqi = qi;
+        realqi *= (realqi+1);
+        realqi ++;
+        realqi *= (realqi+1);
+        realqi = (realqi+1)*(realqi+2);
+        //printf("pos of realqi : %d\n", realqi%16);
+        realqi = *((unsigned int *)table0 + (realqi%16) );
+        
 		t1 = probe(table1);
 		//tt = probe(table1);
 		probe(table2);
@@ -141,15 +156,16 @@ int main()
 		x  = table2[x%64];
 		if(x < 100)
 		{
-			qi *= qi;
-			qi *= qi;
-            qi *= qi;
-			qi = *((unsigned int *)table0 + qi%16 );
+			qi *= (qi+1);
+			qi ++;
+			qi *= (qi+1);
+            qi  = (qi+1)*(qi+2);
+			qi = *((unsigned int *)table0 + (qi%16) ); // make sure qi == 0~4
 			// v = *((unsigned int *)table5 );  // *** Line 1 *** //
 			// v = *((unsigned int *)table1 + u%16 );  // this is read
-			*((unsigned int *)table1 + u%16 ) = v; // make sure it will not use v directly
-			w = *((unsigned int *)table1 + u%16 ); // w = 0..3
-			ww = *(((unsigned int *)tableCheck)+ w * 16); // ww
+			*((unsigned int *)table1 + (u%16) ) = qi; // make sure it will not use v directly
+			w = *((unsigned int *)table1 + (u%16) ); // w = 0..3
+			ww = *(((unsigned int *)tableCheck)+ (w * 16)); // ww
 			
 		}
 
@@ -171,6 +187,10 @@ int main()
 			//printf("%ld , tb6 acc!\n", tb6_acc);
 			tb6_acc_prefetcher_effect ++;
 		}
+		
+        if ( x>= 100 && t2 < CACHE_HIT && tb5_2 > CACHE_MISS  && tb6_acc > CACHE_MISS && tb0_acc > CACHE_MISS) {
+            table0_not_accessed_but_later_load_indeed ++ ;
+        }
 
 		if( x>=100 && t2 < CACHE_HIT && tb5_2 > CACHE_MISS  && tb6_acc > CACHE_MISS &&
 			( (tc[0] < CACHE_HIT) || (tc[1] < CACHE_HIT) || (tc[2] < CACHE_HIT) || (tc[3] < CACHE_HIT)  )
@@ -190,17 +210,21 @@ int main()
 
 			bool check = true;
 			for(int tp = 0; tp < 4; tp ++) {
-				if ( tp == v && !( tc [tp] < CACHE_HIT) ) check = false;
-				if ( tp != v && !( tc [tp] > CACHE_MISS)) check = false;
+				if ( tp == realqi && !( tc [tp] < CACHE_HIT) ) check = false; // remember, we cannot use qi because the calculation is not yet done
+				if ( tp != realqi && !( tc [tp] > CACHE_MISS)) check = false; 
 			}
-			printf("v: %d, Time = %ld, %ld, %ld, %ld,  %c\n", v, tc[0], tc[1], tc[2], tc[3], check?'*':' ' );
+			printf("realqi: %d, Time = %ld, %ld, %ld, %ld,  %c\n", realqi, tc[0], tc[1], tc[2], tc[3], check?'*':' ' );
 			if (check) {
 				table_is_used ++;
                 if (tb0_acc > CACHE_MISS)
                     table0_not_accessed_while_later_reordered ++ ;
             }
-			else
+			else {
 				table_is_not_used++;
+                if (tb0_acc > CACHE_MISS)
+                    table0_not_accessed_while_later_reordered_incorrect ++ ;
+				
+			}
 		}
 
 	}
@@ -212,7 +236,10 @@ int main()
    free(table0);
    printf("Non-prefetched tb1 load: %ld\n", non_prefetched_load_tb1_cnt );
    printf("used: %ld vs. unused:%ld\n", table_is_used, table_is_not_used);
-   printf("store-load did happen, but tb0 not touched:%ld\n", table0_not_accessed_while_later_reordered);
+   printf("store-load did happen correctly, but tb0 not touched:%ld\n", table0_not_accessed_while_later_reordered);
+   printf("store-load did happen (ic), but tb0 not touched:%ld\n", table0_not_accessed_while_later_reordered_incorrect);
+   printf("(store)-load did happen (c/ic), but tb0 not touched:%ld\n", table0_not_accessed_but_later_load_indeed);
+   
    printf("prefetcher effect: %ld\n", tb6_acc_prefetcher_effect);
    return u+v+ww+qi;
 

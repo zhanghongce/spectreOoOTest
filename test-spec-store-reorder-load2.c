@@ -1,7 +1,7 @@
 // Hongce Zhang @ Princeton
 // The way to rule out prefetcher effects is shown in test2.c
 // In this test, we will discuss 
-// whether speculative store is usable
+// whether load store---(dep)----load will be reordered
 // Please compile it with -O0 
 // use g++ (Ubuntu 5.4.0-6ubuntu1~16.04.9) 5.4.0 20160609 please
 
